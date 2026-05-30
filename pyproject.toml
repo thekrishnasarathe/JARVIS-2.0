@@ -1,0 +1,26 @@
+[project]
+name = "jarvis-2"
+version = "2.0.0"
+description = "JARVIS 2.0 — Modular Desktop AI Assistant with Reactive Dashboard"
+requires-python = ">=3.11"
+
+dependencies = [
+    "reflex>=0.6.0",
+    "pyttsx3>=2.90",
+    "SpeechRecognition>=3.10",
+    "wikipedia>=1.4",
+    "pyjokes>=0.6",
+    "psutil>=5.9",
+    "pyautogui>=0.9",
+    "requests>=2.31",
+    "pywhatkit>=5.4",
+    "python-dotenv>=1.0",
+]
+
+[project.optional-dependencies]
+wake-word = ["pvporcupine>=3.0", "PyAudio>=0.2.14"]
+security = ["opencv-python>=4.8"]
+all = ["jarvis-2[wake-word,security]"]
+
+[project.scripts]
+jarvis = "run:main"

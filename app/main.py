@@ -41,35 +41,20 @@ app = FastAPI(
 )
 
 # ─── CORS Configuration ───────────────────────────────────────────────
-frontend_env = os.getenv("FRONTEND_URL", "").strip()
-default_origins = [
-    "http://localhost:3000",
-    "http://localhost:5173",
-    "http://localhost:8000",
-    "http://127.0.0.1:3000",
-    "http://127.0.0.1:5173",
-    "http://127.0.0.1:8000",
-]
+frontend_env = os.getenv("FRONTEND_URL", "*").strip()
 
 if frontend_env and frontend_env != "*":
-    for u in frontend_env.split(","):
-        cleaned = u.strip()
-        if cleaned and cleaned not in default_origins:
-            default_origins.append(cleaned)
-    allowed_origins = default_origins
+    allowed_origins = [u.strip() for u in frontend_env.split(",") if u.strip()]
     allow_credentials = True
-elif frontend_env == "*":
+else:
     allowed_origins = ["*"]
     allow_credentials = False
-else:
-    allowed_origins = default_origins
-    allow_credentials = True
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
     allow_credentials=allow_credentials,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD"],
+    allow_methods=["*"],
     allow_headers=["*"],
     max_age=86400,
 )

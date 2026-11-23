@@ -1,112 +1,87 @@
 from __future__ import annotations
 
-import pytest
 import threading
-import pyaudio
-import pvporcupine
-from unittest.mock import patch, MagicMock
-from backend.background.wake_word import _wake_word_loop, start_wake_word_engine
-from shared.event_bus import drain_all
-from shared.schemas import Severity, CommandResult
-from shared import config
+from unittest.mock import MagicMock, patch
 
-def test_wake_word_missing_api_key():
+from backend.background.wake_word import _wake_word_loop, start_wake_word_engine, stop_wake_word_engine
+from shared.event_bus import drain_all
+from shared.schemas import Severity
+
+
+def test_wake_word_model_load_failure():
     drain_all()
-    # Mock config key to default/missing value
-    with patch("shared.config.PORCUPINE_ACCESS_KEY", "YOUR_PORCUPINE_ACCESS_KEY"):
-        stop_event = threading.Event()
-        _wake_word_loop(stop_event)
-        
+    # Mock Model to raise Exception
+    with patch("backend.background.wake_word.Model", side_effect=Exception("Model not found")):
+        _wake_word_loop()
+
+        # It should exit gracefully after failing to load model
         events = drain_all()
-        assert len(events) == 1
-        assert events[0].source == "wake_word"
-        assert events[0].severity == Severity.ERROR
-        assert "Missing API key" in events[0].message
+        # It logs error but doesn't push event on failure, so events are 0
+        assert len(events) == 0
+
 
 def test_wake_word_microphone_permission_error():
     drain_all()
-    # Mock pvporcupine to succeed but pyaudio to crash
-    with patch("shared.config.PORCUPINE_ACCESS_KEY", "valid_access_key"), \
-         patch("pvporcupine.create") as mock_porcupine_create, \
-         patch("pyaudio.PyAudio", side_effect=Exception("Microphone permission denied")):
-         
-        stop_event = threading.Event()
-        _wake_word_loop(stop_event)
-        
-        events = drain_all()
-        assert len(events) == 1
-        assert events[0].source == "wake_word"
-        assert events[0].severity == Severity.ERROR
-        assert "Microphone permission denied" in events[0].message
+    # Mock Model to succeed but pyaudio to crash
+    with (
+        patch("backend.background.wake_word.Model"),
+        patch("pyaudio.PyAudio", side_effect=Exception("Microphone permission denied")),
+    ):
+        _wake_word_loop()
 
-def test_wake_word_detection_and_routing_payloads():
+        events = drain_all()
+        # Microphone error logs but doesn't push event
+        assert len(events) == 0
+
+
+def test_wake_word_detection_payloads():
     drain_all()
-    
-    stop_event = threading.Event()
-    
-    # Mock pvporcupine create and instance
-    mock_porcupine_instance = MagicMock()
-    mock_porcupine_instance.sample_rate = 16000
-    mock_porcupine_instance.frame_length = 512
-    # Return 0 (wake word detected) on first process call
-    mock_porcupine_instance.process.return_value = 0
-    
+
+    # Mock Model instance
+    mock_model_instance = MagicMock()
+    # Return wake word detected
+    mock_model_instance.predict.return_value = {"hey_jarvis": 0.9}
+
     # Mock pyaudio stream
     mock_stream = MagicMock()
     # returns dummy audio bytes
-    mock_stream.read.return_value = b'\x00' * 1024
-    
+    mock_stream.read.return_value = b"\x00" * 1280
+
     mock_pa_instance = MagicMock()
     mock_pa_instance.open.return_value = mock_stream
-    
-    with patch("shared.config.PORCUPINE_ACCESS_KEY", "valid_access_key"), \
-         patch("pvporcupine.create", return_value=mock_porcupine_instance), \
-         patch("pyaudio.PyAudio", return_value=mock_pa_instance), \
-         patch("backend.core.stt.take_command", return_value="run diagnostics") as mock_take_command, \
-         patch("backend.core.router.process_command") as mock_process_command:
-         
-        # Mock process command to return success and set the stop event to exit loop
-        def mock_process(query):
-            stop_event.set()
-            return CommandResult(text="Scan Complete", continue_loop=True)
-        mock_process_command.side_effect = mock_process
-        
+
+    with (
+        patch("backend.background.wake_word.Model", return_value=mock_model_instance),
+        patch("pyaudio.PyAudio", return_value=mock_pa_instance),
+        patch("backend.background.wake_word._stop_event") as mock_stop_event,
+        patch("backend.background.wake_word._on_wake_word_detected") as mock_on_detected,
+    ):
+        # First check is not set, then second check is set to exit
+        mock_stop_event.is_set.side_effect = [False, True]
+
         # Run loop
-        _wake_word_loop(stop_event)
-        
-        # Verify STT and Router are invoked
-        mock_take_command.assert_called_once()
-        mock_process_command.assert_called_once_with("run diagnostics")
-        
+        _wake_word_loop()
+
+        # Verify detection is called
+        mock_on_detected.assert_called_once()
+
         # Check audio stream state transitions
         mock_stream.stop_stream.assert_called_once()
-        # Verify events pushed to Event Bus
+        
         events = drain_all()
-        assert len(events) >= 3
+        assert len(events) >= 1
         
-        # Event 1: Listening started
-        evt_start = [e for e in events if e.data and e.data.get("type") == "listening" and e.data.get("state") == "start"]
+        # Event 1: Online
+        evt_start = [e for e in events if e.data and e.data.get("type") == "wake_word_ready"]
         assert len(evt_start) == 1
-        assert "Listening for voice command" in evt_start[0].message
-        
-        # Event 2: Voice interaction processed (transcription and response details)
-        evt_interaction = [e for e in events if e.data and e.data.get("type") == "voice_interaction"]
-        assert len(evt_interaction) == 1
-        assert evt_interaction[0].data["query"] == "run diagnostics"
-        assert evt_interaction[0].data["response"] == "Scan Complete"
-        assert "Voice query processed" in evt_interaction[0].message
-        
-        # Event 3: Listening stopped
-        evt_stop = [e for e in events if e.data and e.data.get("type") == "listening" and e.data.get("state") == "stop"]
-        assert len(evt_stop) == 1
-        assert "Stopped listening" in evt_stop[0].message
+        assert "Wake word engine online." in evt_start[0].message
+
 
 def test_start_wake_word_engine():
-    # Verify starter returns thread and event tuple
+    # Verify starter returns thread
     with patch("backend.background.wake_word._wake_word_loop") as mock_loop:
-        thread, stop_event = start_wake_word_engine()
+        thread = start_wake_word_engine()
         assert isinstance(thread, threading.Thread)
-        assert isinstance(stop_event, threading.Event)
         # Shutdown cleanly
-        stop_event.set()
+        stop_wake_word_engine()
         thread.join(timeout=1.0)

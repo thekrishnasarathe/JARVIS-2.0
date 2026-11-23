@@ -1,4 +1,5 @@
 """Shared data schemas for cross-boundary communication."""
+
 from __future__ import annotations
 
 import datetime
@@ -9,6 +10,7 @@ from typing import Optional
 
 class Severity(str, Enum):
     """Event severity levels for UI rendering."""
+
     INFO = "info"
     SUCCESS = "success"
     WARNING = "warning"
@@ -27,6 +29,7 @@ class CommandResult:
         severity: UI hint for toast/card coloring.
         source: Which module generated this result.
     """
+
     text: str
     continue_loop: bool = True
     severity: Severity = Severity.INFO
@@ -44,6 +47,7 @@ class JarvisEvent:
         timestamp: When the event was generated.
         data: Optional structured payload (e.g., battery percent).
     """
+
     message: str
     severity: Severity = Severity.WARNING
     source: str = "system"

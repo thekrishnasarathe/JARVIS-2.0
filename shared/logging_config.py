@@ -1,4 +1,5 @@
 """Centralized logging configuration for the entire JARVIS stack."""
+
 from __future__ import annotations
 
 import logging
@@ -43,6 +44,7 @@ def configure_logging(level: int = logging.INFO) -> None:
     root.addHandler(file_handler)
 
     logging.getLogger("jarvis").info(
-        "Logging initialized -> console (%s) + file (%s)", 
-        logging.getLevelName(level), LOG_FILE
+        "Logging initialized -> console (%s) + file (%s)",
+        logging.getLevelName(level),
+        LOG_FILE,
     )

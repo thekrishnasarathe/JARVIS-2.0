@@ -10,6 +10,7 @@ Architecture:
 The queue.Queue is inherently thread-safe. The async consumer wraps
 queue.get() in asyncio.to_thread() to avoid blocking the event loop.
 """
+
 from __future__ import annotations
 
 import asyncio

@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import logging
 import threading
-import time
 
 from shared import config
 from shared.event_bus import push_event
@@ -25,39 +24,44 @@ def _battery_check_loop(stop_event: threading.Event) -> None:
     while not stop_event.is_set():
         try:
             import psutil
+
             battery = psutil.sensors_battery()
 
             if battery is None:
                 # Desktop PC or unsupported platform — stop polling.
-                logger.info('No battery sensor detected. Monitor exiting.')
+                logger.info("No battery sensor detected. Monitor exiting.")
                 return
 
             percent = battery.percent
             plugged = battery.power_plugged
 
             if percent <= config.BATTERY_LOW_THRESHOLD and not plugged and not warned:
-                push_event(JarvisEvent(
-                    message=f"Battery critically low at {percent}%. Please plug in charger.",
-                    severity=Severity.WARNING,
-                    source="battery_monitor",
-                    data={"percent": percent, "plugged": False},
-                ))
+                push_event(
+                    JarvisEvent(
+                        message=f"Battery critically low at {percent}%. Please plug in charger.",
+                        severity=Severity.WARNING,
+                        source="battery_monitor",
+                        data={"percent": percent, "plugged": False},
+                    )
+                )
                 warned = True
-                logger.warning('Low battery warning issued: %d%%', percent)
+                logger.warning("Low battery warning issued: %d%%", percent)
 
             elif percent > config.BATTERY_LOW_THRESHOLD or plugged:
                 warned = False  # Reset once battery recovers or is plugged in.
-                
+
                 # Push a background info event to update UI state silently
-                push_event(JarvisEvent(
-                    message=f"Battery at {percent}%.",
-                    severity=Severity.INFO,
-                    source="battery_monitor",
-                    data={"percent": percent, "plugged": plugged},
-                ))
+                push_event(
+                    JarvisEvent(
+                        message=f"Battery at {percent}%.",
+                        severity=Severity.INFO,
+                        source="battery_monitor",
+                        data={"percent": percent, "plugged": plugged},
+                    )
+                )
 
         except Exception as exc:
-            logger.error('Battery monitor error: %s', exc)
+            logger.error("Battery monitor error: %s", exc)
 
         stop_event.wait(config.BATTERY_CHECK_INTERVAL)
 
@@ -73,8 +77,10 @@ def start_battery_monitor() -> tuple[threading.Thread, threading.Event]:
         target=_battery_check_loop,
         args=(stop_event,),
         daemon=True,
-        name='BatteryMonitor',
+        name="BatteryMonitor",
     )
     thread.start()
-    logger.info('Battery monitor started (threshold: %d%%).', config.BATTERY_LOW_THRESHOLD)
+    logger.info(
+        "Battery monitor started (threshold: %d%%).", config.BATTERY_LOW_THRESHOLD
+    )
     return thread, stop_event

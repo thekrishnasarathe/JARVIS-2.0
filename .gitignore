@@ -1,11 +1,50 @@
-*.db
-.states
-assets/external/
+# Byte-compiled / optimized / DLL files
 __pycache__/
-.web
 *.py[cod]
+*$py.class
+*.pyc
 
+# Virtual Environments
 .venv/
-logs/
-*.zip
+venv/
+ENV/
+env/
+
+# Environment Variables & Secrets
 .env
+.env.*
+!.env.example
+
+# Databases & SQLite
+*.db
+*.sqlite
+*.sqlite3
+
+# Node / Web builds
+node_modules/
+.web/
+dist/
+build/
+
+# Testing & Coverage
+.coverage
+.pytest_cache/
+htmlcov/
+
+# Logs & Storage
+logs/
+cache/
+exports/
+*.zip
+
+# Operating System & IDEs
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Project internal states
+.states/
+assets/external/

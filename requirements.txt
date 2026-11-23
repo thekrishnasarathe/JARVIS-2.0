@@ -13,7 +13,7 @@ requests>=2.31
 pywhatkit>=5.4
 
 # ─── Wake Word Engine ────────────────────────────────────────────────
-pvporcupine>=3.0
+openwakeword>=0.6.0
 PyAudio>=0.2.14
 
 # ─── Computer Vision (Security) ──────────────────────────────────────
@@ -27,3 +27,15 @@ PyQt6>=6.5
 pyvista>=0.43
 pyvistaqt>=0.11
 pyqtdarktheme
+
+# ─── Environment Management ──────────────────────────────────────────
+python-dotenv>=1.0.1
+numpy>=1.26.0
+
+# ─── Groq API ──────────────────────────────────────────────
+groq>=0.9.0
+
+# ─── Production Web & Cloud Deployment (Render/Railway/HF Spaces) ────
+fastapi>=0.110.0
+uvicorn[standard]>=0.29.0
+pydantic>=2.0.0

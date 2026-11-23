@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>STARK INDUSTRIES // J.A.R.V.I.S v2.0</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800;900&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%23000' stroke='%23FF6B00' stroke-width='6'/><circle cx='50' cy='50' r='20' fill='%23F5A623'/></svg>">
+</head>
+<body>
+  <!-- HUD Scanning Grid & Vignette Overlay -->
+  <div class="hud-grid"></div>
+  <div class="hud-scanline"></div>
+
+  <!-- Top Chrome Navigation -->
+  <header class="hud-header">
+    <div class="header-left">
+      <div class="logo-badge">MARK L</div>
+      <div class="title-group">
+        <h1 class="hud-title">STARK INDUSTRIES <span class="dim">//</span> J.A.R.V.I.S. 2.0</h1>
+        <p class="hud-subtitle">TACTICAL AI ORCHESTRATION INTERFACE</p>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="telemetry-pill">
+        <span class="pill-label">STATUS</span>
+        <span id="system-status-indicator" class="pill-value status-online">ONLINE</span>
+      </div>
+      <div class="telemetry-pill">
+        <span class="pill-label">UPTIME</span>
+        <span id="live-clock" class="pill-value">00:00:00</span>
+      </div>
+      <button id="audio-toggle" class="hud-btn-mini" title="Toggle Voice Audio">🔊 AUDIO ON</button>
+    </div>
+  </header>
+
+  <!-- Main HUD Layout -->
+  <main class="hud-container">
+    <!-- Left Column: Core Hologram / Arc Reactor & Telemetry -->
+    <section class="hud-panel left-panel">
+      <div class="panel-header">
+        <span class="panel-bracket">[</span>
+        <span class="panel-name">ARC CORE & DIAGNOSTICS</span>
+        <span class="panel-bracket">]</span>
+      </div>
+
+      <div class="arc-container">
+        <div id="arc-reactor" class="arc-reactor" title="Click to trigger speech input">
+          <div class="arc-ring ring-outer"></div>
+          <div class="arc-ring ring-mid"></div>
+          <div class="arc-ring ring-inner"></div>
+          <div class="arc-core"></div>
+        </div>
+        <div class="core-status-text" id="core-state-label">CORE READY</div>
+      </div>
+
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <div class="metric-header">
+            <span>CPU LOAD</span>
+            <span id="cpu-val">0%</span>
+          </div>
+          <div class="metric-bar-wrap">
+            <div id="cpu-bar" class="metric-bar-fill" style="width: 15%;"></div>
+          </div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-header">
+            <span>MEMORY RAM</span>
+            <span id="ram-val">0%</span>
+          </div>
+          <div class="metric-bar-wrap">
+            <div id="ram-bar" class="metric-bar-fill" style="width: 42%;"></div>
+          </div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-header">
+            <span>ACTIVE PLUGINS</span>
+            <span id="plugin-val">2 LOADED</span>
+          </div>
+          <div class="metric-subtext">news_fetcher • pomodoro</div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-header">
+            <span>EIDETIC MEMORIES</span>
+            <span id="mem-val">0 NODES</span>
+          </div>
+          <div class="metric-subtext">3D Gravitational Physics</div>
+        </div>
+      </div>
+
+      <!-- Quick Commands -->
+      <div class="quick-commands">
+        <div class="sub-heading">TACTICAL SHORTCUTS</div>
+        <div class="chips-list">
+          <button class="chip-btn" data-cmd="system status">SYSTEM STATUS</button>
+          <button class="chip-btn" data-cmd="check battery">CHECK BATTERY</button>
+          <button class="chip-btn" data-cmd="tell me a joke">TELL ME A JOKE</button>
+          <button class="chip-btn" data-cmd="what is 42 times 7">42 * 7</button>
+          <button class="chip-btn" data-cmd="list plugins">LIST PLUGINS</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Right Column: Interactive Terminal & Feed -->
+    <section class="hud-panel right-panel">
+      <div class="panel-header">
+        <span class="panel-bracket">[</span>
+        <span class="panel-name">COMMAND LOG & NEURAL CHAT</span>
+        <span class="panel-bracket">]</span>
+        <button id="clear-log-btn" class="hud-btn-mini">CLEAR</button>
+      </div>
+
+      <div id="chat-feed" class="chat-feed" role="log" aria-live="polite">
+        <div class="chat-message jarvis">
+          <div class="msg-header">
+            <span class="msg-author">J.A.R.V.I.S.</span>
+            <span class="msg-time">INIT</span>
+            <span class="badge badge-success">READY</span>
+          </div>
+          <div class="msg-body">
+            Good day, Boss. All background daemons and intelligence cores are calibrated and online. Ready for your command.
+          </div>
+        </div>
+      </div>
+
+      <!-- Loading State Indicator -->
+      <div id="thinking-indicator" class="thinking-bar hidden">
+        <div class="pulse-line"></div>
+        <span>PROCESSING NEURAL QUERY...</span>
+      </div>
+
+      <!-- Input Area -->
+      <form id="command-form" class="hud-input-group">
+        <div class="prompt-symbol">&gt;</div>
+        <input 
+          type="text" 
+          id="command-input" 
+          class="hud-input" 
+          placeholder="Enter command or query (e.g. 'system status', 'weather in Tokyo', 'remember my key')..."
+          autocomplete="off"
+          required
+        />
+        <button type="submit" id="submit-btn" class="hud-btn-submit">
+          <span>TRANSMIT</span>
+          <span class="btn-arrow">▶</span>
+        </button>
+      </form>
+    </section>
+  </main>
+
+  <!-- Error Boundary Banner -->
+  <div id="error-boundary-toast" class="error-toast hidden">
+    <span class="error-icon">⚠️</span>
+    <span id="error-toast-msg">Connection lost. Reconnecting...</span>
+    <button id="dismiss-error" class="error-dismiss">&times;</button>
+  </div>
+
+  <footer class="hud-footer">
+    <span>SYSTEM ARCHITECTURE: 5-AGENT ECOSYSTEM</span>
+    <span class="dim">•</span>
+    <span>RELEASE v2.0 PRODUCTION</span>
+    <span class="dim">•</span>
+    <span>ENDPOINT: <span id="active-api-url">AUTODETECT</span></span>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

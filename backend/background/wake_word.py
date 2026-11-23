@@ -1,133 +1,118 @@
-"""Wake Word background daemon using pvporcupine.
-
-Listens for the 'Jarvis' hotword and bridges to the STT pipeline.
+"""
+Wake word daemon using OpenWakeWord (offline, no API key).
+Listens continuously for 'Hey JARVIS' and triggers STT pipeline.
 """
 from __future__ import annotations
 
 import logging
-import struct
 import threading
-
+import numpy as np
 import pyaudio
-import pvporcupine
+from openwakeword.model import Model
 
-from shared import config
 from shared.event_bus import push_event
 from shared.schemas import JarvisEvent, Severity
+from shared import config
 
 logger = logging.getLogger(__name__)
 
-def _wake_word_loop(stop_event: threading.Event) -> None:
-    """Continuously listen for the wake word."""
-    porcupine = None
-    pa = None
-    audio_stream = None
+# Audio config — must match OpenWakeWord requirements
+SAMPLE_RATE    = 16000
+CHUNK_SIZE     = 1280   # 80ms at 16kHz — OWW recommended
+CHANNELS       = 1
+FORMAT         = pyaudio.paInt16
+WAKE_THRESHOLD = config.WAKE_THRESHOLD    # confidence threshold
+
+_stop_event = threading.Event()
+
+def _wake_word_loop():
+    logger.info("[WAKE WORD] Initializing OpenWakeWord engine...")
+    try:
+        oww_model = Model(
+            wakeword_models=[config.WAKE_WORD_MODEL],
+            inference_framework="onnx"
+        )
+        logger.info("[WAKE WORD] Model loaded. Listening for 'Hey JARVIS'...")
+    except Exception as e:
+        logger.error(f"[WAKE WORD] Failed to load model: {e}")
+        return
 
     try:
-        if config.PORCUPINE_ACCESS_KEY == "YOUR_PORCUPINE_ACCESS_KEY" or not config.PORCUPINE_ACCESS_KEY:
-            raise ValueError("Porcupine access key not configured.")
-
-        porcupine = pvporcupine.create(
-            access_key=config.PORCUPINE_ACCESS_KEY,
-            keywords=config.PORCUPINE_KEYWORDS
-        )
-        
         pa = pyaudio.PyAudio()
-        audio_stream = pa.open(
-            rate=porcupine.sample_rate,
-            channels=1,
-            format=pyaudio.paInt16,
+        stream = pa.open(
+            rate=SAMPLE_RATE,
+            channels=CHANNELS,
+            format=FORMAT,
             input=True,
-            frames_per_buffer=porcupine.frame_length
+            frames_per_buffer=CHUNK_SIZE
         )
-
-        logger.info("Wake-word engine started. Listening for %s...", config.PORCUPINE_KEYWORDS)
-        
-        while not stop_event.is_set():
-            pcm = audio_stream.read(porcupine.frame_length, exception_on_overflow=False)
-            pcm = struct.unpack_from("h" * porcupine.frame_length, pcm)
-
-            keyword_index = porcupine.process(pcm)
-            
-            if keyword_index >= 0:
-                logger.info("Wake word detected!")
-                
-                # Signal UI that we are listening
-                push_event(JarvisEvent(
-                    message="Listening for voice command...",
-                    severity=Severity.INFO,
-                    source="wake_word",
-                    data={"type": "listening", "state": "start"}
-                ))
-                
-                # Temporarily stop the audio stream so STT can use the microphone
-                audio_stream.stop_stream()
-                
-                try:
-                    from backend.core.stt import take_command
-                    query = take_command()
-                    
-                    if query and query != 'None':
-                        from backend.core.router import process_command
-                        result = process_command(query)
-                        
-                        # Push event with the transcribed query and the result so the UI can render it
-                        push_event(JarvisEvent(
-                            message=f"Voice query processed: {query}",
-                            severity=Severity.INFO,
-                            source="wake_word",
-                            data={
-                                "type": "voice_interaction", 
-                                "query": query, 
-                                "response": result.text
-                            }
-                        ))
-                except Exception as e:
-                    logger.error("Error during STT or routing: %s", e)
-                finally:
-                    # Signal UI that we stopped listening
-                    push_event(JarvisEvent(
-                        message="Stopped listening.",
-                        severity=Severity.INFO,
-                        source="wake_word",
-                        data={"type": "listening", "state": "stop"}
-                    ))
-                    
-                    # Restart stream for wake-word
-                    if not stop_event.is_set():
-                        audio_stream.start_stream()
-
-    except ValueError as ve:
-        logger.error("Wake word engine disabled: %s", ve)
-        push_event(JarvisEvent(
-            message="Wake-word engine disabled: Missing API key. Please update .env",
-            severity=Severity.ERROR,
-            source="wake_word"
-        ))
-    except Exception as exc:
-        logger.error("Wake word engine crashed: %s", exc)
-        push_event(JarvisEvent(
-            message=f"Wake-word engine crashed: {exc}",
-            severity=Severity.ERROR,
-            source="wake_word"
-        ))
-    finally:
-        if audio_stream is not None:
-            audio_stream.close()
-        if pa is not None:
+    except Exception as e:
+        logger.error(f"[WAKE WORD] Microphone error: {e}")
+        if 'pa' in locals():
             pa.terminate()
-        if porcupine is not None:
-            porcupine.delete()
+        return
 
+    logger.info("[WAKE WORD] Microphone open. Ready.")
+    push_event(JarvisEvent(
+        message="Wake word engine online.",
+        severity=Severity.INFO,
+        source="wake_word",
+        data={"type": "wake_word_ready"}
+    ))
 
-def start_wake_word_engine() -> tuple[threading.Thread, threading.Event]:
-    """Launch the wake-word engine as a daemon thread."""
-    stop_event = threading.Event()
-    thread = threading.Thread(
-        target=_wake_word_loop,
-        args=(stop_event,),
+    while not _stop_event.is_set():
+        try:
+            raw = stream.read(CHUNK_SIZE, exception_on_overflow=False)
+            audio = np.frombuffer(raw, dtype=np.int16)
+            prediction = oww_model.predict(audio)
+
+            for wake_word, score in prediction.items():
+                if score >= WAKE_THRESHOLD:
+                    logger.info(
+                        f"[WAKE WORD] Detected '{wake_word}' "
+                        f"(confidence: {score:.2f})"
+                    )
+                    _on_wake_word_detected()
+                    # Brief cooldown to prevent double-trigger
+                    _stop_event.wait(timeout=2.0)
+
+        except Exception as e:
+            logger.warning(f"[WAKE WORD] Audio read error: {e}")
+            continue
+
+    stream.stop_stream()
+    stream.close()
+    pa.terminate()
+    logger.info("[WAKE WORD] Engine stopped.")
+
+def _on_wake_word_detected():
+    """Called when wake word is confirmed. Triggers STT pipeline."""
+    push_event(JarvisEvent(
+        message="Wake word detected — activating JARVIS...",
+        severity=Severity.INFO,
+        source="wake_word",
+        data={"type": "wake_word_detected"}
+    ))
+
+    # Import here to avoid circular imports at module level
+    from backend.background.wake_word_stt import listen_and_process
+    threading.Thread(
+        target=listen_and_process,
         daemon=True,
-        name='WakeWordEngine',
+        name="WakeWordSTT"
+    ).start()
+
+def start_wake_word_engine() -> threading.Thread:
+    """Start the wake word daemon. Called by run.py on startup."""
+    _stop_event.clear()
+    t = threading.Thread(
+        target=_wake_word_loop,
+        daemon=True,
+        name="WakeWordEngine"
     )
-    thread.start()
-    return thread, stop_event
+    t.start()
+    return t
+
+def stop_wake_word_engine():
+    """Graceful shutdown."""
+    _stop_event.set()

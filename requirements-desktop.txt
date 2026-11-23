@@ -1,0 +1,12 @@
+# ─── JARVIS 2.0 Desktop 3D GUI & Local Hardware Sensors ──────────────
+-r requirements.txt
+PyQt6>=6.5
+pyvista>=0.43
+pyvistaqt>=0.11
+pyqtdarktheme
+pyttsx3>=2.90
+pyautogui>=0.9
+pywhatkit>=5.4
+openwakeword>=0.6.0
+PyAudio>=0.2.14
+opencv-python>=4.8

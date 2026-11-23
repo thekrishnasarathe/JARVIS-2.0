@@ -117,8 +117,12 @@ python -m venv .venv
 # macOS / Linux:
 source .venv/bin/activate
 
-# Install dependencies
+# Install dependencies:
+# For Cloud Web Gateway / REST API:
 pip install -r requirements.txt
+
+# For Full 3D Desktop UI & Sensors:
+pip install -r requirements-desktop.txt
 ```
 
 ### 2. Run Modes

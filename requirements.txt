@@ -1,41 +1,12 @@
-# ─── Core ─────────────────────────────────────────────────────────────
-pyttsx3>=2.90
-SpeechRecognition>=3.10
-wikipedia>=1.4
-pyjokes>=0.6
-
-# ─── System Utilities ────────────────────────────────────────────────
-psutil>=5.9
-pyautogui>=0.9
-
-# ─── Web & APIs ───────────────────────────────────────────────────────
-requests>=2.31
-pywhatkit>=5.4
-
-# ─── Wake Word Engine ────────────────────────────────────────────────
-openwakeword>=0.6.0
-PyAudio>=0.2.14
-
-# ─── Computer Vision (Security) ──────────────────────────────────────
-opencv-python>=4.8
-
-# ─── Note: Ollama uses its REST API — no Python package required ─────
-# Install Ollama separately: https://ollama.ai
-
-# ─── Native UI Dependencies ─────────────────────────────────────────────
-PyQt6>=6.5
-pyvista>=0.43
-pyvistaqt>=0.11
-pyqtdarktheme
-
-# ─── Environment Management ──────────────────────────────────────────
-python-dotenv>=1.0.1
-numpy>=1.26.0
-
-# ─── Groq API ──────────────────────────────────────────────
-groq>=0.9.0
-
-# ─── Production Web & Cloud Deployment (Render/Railway/HF Spaces) ────
+# ─── Production Cloud & Web Backend (Render / Railway / Hugging Face) ─
 fastapi>=0.110.0
 uvicorn[standard]>=0.29.0
 pydantic>=2.0.0
+requests>=2.31
+groq>=0.9.0
+python-dotenv>=1.0.1
+psutil>=5.9
+numpy>=1.26.0
+pyjokes>=0.6
+wikipedia>=1.4
+SpeechRecognition>=3.10

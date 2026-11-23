@@ -16,9 +16,9 @@
 
 | Service | Component | Status | URL |
 | :--- | :--- | :--- | :--- |
-| **Vercel** | Iron Man HUD Web Frontend | [![Vercel](https://img.shields.io/badge/Vercel-Deployed-black?logo=vercel)](https://vercel.com) | *[Add your Vercel URL upon deployment]* |
-| **Render** | FastAPI Backend Gateway | [![Render](https://img.shields.io/badge/Render-Online-46E3B7?logo=render)](https://render.com) | *[Add your Render URL upon deployment]* |
-| **API Health** | Gateway Probe | `GET /health` | `https://<your-backend>.onrender.com/health` |
+| **Vercel** | Iron Man HUD Web Frontend | [![Vercel](https://img.shields.io/badge/Vercel-Deployed-black?logo=vercel)](https://jarvis-20-web.vercel.app/?api=https://jarvis-2-0-dv4v.onrender.com) | [jarvis-20-web.vercel.app](https://jarvis-20-web.vercel.app/?api=https://jarvis-2-0-dv4v.onrender.com) |
+| **Render** | FastAPI Backend Gateway | [![Render](https://img.shields.io/badge/Render-Online-46E3B7?logo=render)](https://jarvis-2-0-dv4v.onrender.com/docs) | [jarvis-2-0-dv4v.onrender.com](https://jarvis-2-0-dv4v.onrender.com) |
+| **API Health** | Gateway Probe | `GET /health` | [jarvis-2-0-dv4v.onrender.com/health](https://jarvis-2-0-dv4v.onrender.com/health) |
 
 ---
 
